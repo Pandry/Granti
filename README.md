@@ -36,3 +36,5 @@ CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 - [ ] Create a systemd installer and integration
 - [ ] Change toml schema to allow jail not to be defined under jails but with [[jailname]]
 - [ ] Reference in the database the jails with the id instead of with the name
+- [ ] Add whitelist
+- [ ] Add ignore regex
