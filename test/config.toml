@@ -1,0 +1,17 @@
+
+Logfile = "granti.log"
+DatabasePath = "granti.db"
+LogExistTimeout = "10s"
+
+[jails]
+	[jails.jailname]
+	Enabled = true
+	Regex = "^(?P<IP>(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)) (?P<timestamp>.*)$"
+	IPGroupName = "IP"
+	TsGroupName = "timestamp"
+	LogFile = "log.log"
+	CounterMaxValue = 10
+	FindTime = "1m"
+	Burst = 0
+	TsLayout = "Mon Jan 2 15:04:05 -0700 MST 2006"
+	BanAction = "/usr/bin/wall Hey, ciao"
