@@ -21,6 +21,9 @@ Given a certain number of chain elements (the maximum request we want to allow a
 But, before doing so, it check the timestamp of the request.  
 If the delta timestamp (between the request that's being overwritten and the request that's going to overwrite) is too low, the IP gets banned (an action gets exectued). 
 
+UML (Needs to be translated to English):
+![](https://i.vgy.me/MKau1o.png)
+
 
 ## Compilation
 Set CGO_ENABLED=1 for sqlite  
