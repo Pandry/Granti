@@ -1,6 +1,6 @@
 # Granti
 
-<div style="text-align:center"><img src="https://camo.githubusercontent.com/274385982abc5f3457f94b6b276c619f9e263e24/68747470733a2f2f73746f726167652e676f6f676c65617069732e636f6d2f676f70686572697a656d652e61707073706f742e636f6d2f676f70686572732f376664303165653338333362376536383065363230663064643630323033326330333232386439302e706e67" alt="Granti Gohper" data-canonical-src="https://storage.googleapis.com/gopherizeme.appspot.com/gophers/7fd01ee3833b7e680e620f0dd602032c03228d90.png" height="300px"  style="text-align: center;"></div>
+<p align="center"><img src="https://camo.githubusercontent.com/274385982abc5f3457f94b6b276c619f9e263e24/68747470733a2f2f73746f726167652e676f6f676c65617069732e636f6d2f676f70686572697a656d652e61707073706f742e636f6d2f676f70686572732f376664303165653338333362376536383065363230663064643630323033326330333232386439302e706e67" alt="Granti Gohper" data-canonical-src="https://storage.googleapis.com/gopherizeme.appspot.com/gophers/7fd01ee3833b7e680e620f0dd602032c03228d90.png" height="300px"  style="text-align: center;"></p>
 
 ## What is that  
 Granti is a tool I've written to check the logs of an application, and, indicating via RegEx the fields of the IP and the timestamp, it analyzes the logs and takes an action when a user exceed with some requests.  
