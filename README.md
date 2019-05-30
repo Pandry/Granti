@@ -21,6 +21,9 @@ Given a certain number of chain elements (the maximum request we want to allow a
 But, before doing so, it check the timestamp of the request.  
 If the delta timestamp (between the request that's being overwritten and the request that's going to overwrite) is too low, the IP gets banned (an action gets exectued). 
 
+UML (Needs to be translated to English):
+![](https://i.vgy.me/MKau1o.png)
+
 
 ## Compilation
 Set CGO_ENABLED=1 for sqlite  
@@ -32,5 +35,11 @@ CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 - [ ] Create a log file per each jail
 - [ ] Create a systemd installer and integration
 - [ ] Change toml schema to allow jail not to be defined under jails but with [[jailname]]
+<<<<<<< HEAD
 - [ ] Reference in the database the jails with the id instead of with the name+
 - [ ] When log gets rotated, the line number should be resetted
+=======
+- [ ] Reference in the database the jails with the id instead of with the name
+- [ ] Add whitelist
+- [ ] Add ignore regex
+>>>>>>> b2d8ab15a33fb3b6bccdc724d7f13e5bcd019620
