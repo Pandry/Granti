@@ -10,7 +10,7 @@ Granti is a tool I've written to check the logs of an application, and, indicati
 
 As I saw from my tests, fail2ban looks at the rate of the requests;  
 Eg. `I want to ban any user that does more than 100 requests in a 150 seconds time window.`  
-For Fail2Ban (from my tests), there is no difference between 100 requests in 150 seconds and 10 requests in 10 seconds.  
+For Fail2Ban (from my tests), there is no difference between 100 requests in 150 seconds and 10 requests in 15 seconds.  
 This is why I made Granti.    
 
 ### How it works
@@ -35,11 +35,8 @@ CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 - [ ] Create a log file per each jail
 - [ ] Create a systemd installer and integration
 - [ ] Change toml schema to allow jail not to be defined under jails but with [[jailname]]
-<<<<<<< HEAD
 - [ ] Reference in the database the jails with the id instead of with the name+
 - [ ] When log gets rotated, the line number should be resetted
-=======
 - [ ] Reference in the database the jails with the id instead of with the name
 - [ ] Add whitelist
 - [ ] Add ignore regex
->>>>>>> b2d8ab15a33fb3b6bccdc724d7f13e5bcd019620
