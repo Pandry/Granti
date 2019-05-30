@@ -177,6 +177,8 @@ func main() {
 				return
 			}
 
+			//c
+
 			l(LogDebug, jailName, "Starting checking the log file")
 			//A while loop to be able to wait some seconds if the file does not exist
 			for {
@@ -236,6 +238,8 @@ func main() {
 						l(LogCrit, jailName, "An error occourred.", "Recovered.\n  Error: ", r)
 					}
 				}()
+
+				//Every n lines, check if the file is new(?)
 
 				//If the process has just started, check the hash of the first line to check if the file has changed
 				if lineNumber == 1 {
