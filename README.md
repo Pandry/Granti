@@ -40,3 +40,4 @@ CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 - [ ] Reference in the database the jails with the id instead of with the name
 - [ ] Add whitelist
 - [ ] Add ignore regex
+- [ ] Abb blackist (eg. banned user agents)
