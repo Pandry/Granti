@@ -162,12 +162,15 @@ func main() {
 	//For each jail, create a new goroutine
 	l(LogDebug, "", "Creating a routine for each jail...")
 	for jailName := range conf.Jails {
+		//Fill the jailDurations hashmap with the duration for each jail
 		jailDurations[jailName], err = time.ParseDuration(conf.Jails[jailName].FindTime)
 		if err != nil {
 			l(LogCrit, jailName, "Cannot parse the FindTime of the jail. Please, check for typos.")
 			continue
 		}
+
 		l(LogDebug, jailName, "Creating a routine the jail...")
+		//Iterates all the jails in the configuration file
 		go func(jailName string, conf config.Config, db *sql.DB) {
 			l(LogDebug, jailName, "The routine was created successfully.")
 			//get the local jail
@@ -177,7 +180,12 @@ func main() {
 				return
 			}
 
-			//c
+			var jailID int64
+			err = db.QueryRow("SELECT ID FROM Jails WHERE Name=? LIMIT 1", jailName).Scan(&jailID)
+			if err != nil {
+				l(LogCrit, jailName, "Cannot get the \"", localJail, "\" Jail ID. Returning.\n  Error: ", err.Error())
+				return
+			}
 
 			l(LogDebug, jailName, "Starting checking the log file")
 			//A while loop to be able to wait some seconds if the file does not exist
@@ -253,7 +261,7 @@ func main() {
 					//TODO: Check for error
 
 					l(LogDebug, jailName, "Extracting the old hash of the first line fro mthe database")
-					dbErr := db.QueryRow("SELECT FirstLineHash FROM Jails WHERE Name=? LIMIT 1", jailName).Scan(&oldHash)
+					dbErr := db.QueryRow("SELECT FirstLineHash FROM Jails WHERE ID=? LIMIT 1", jailID).Scan(&oldHash)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Error with the database query while reading the old hash. Returning.\n  Error:", dbErr.Error())
@@ -264,7 +272,7 @@ func main() {
 						//If the old file is different, update the hash and set the boolean flag
 						//TODO: Check for error
 						l(LogDebug, jailName, "The new log file is different from the previous one. Updating the hash in DB")
-						_, dbErr = db.Exec("UPDATE Jails SET FirstLineHash=?, LastScannedLine=0 WHERE Name=?", hash, jailName)
+						_, dbErr = db.Exec("UPDATE Jails SET FirstLineHash=?, LastScannedLine=0 WHERE ID=?", hash, JailID)
 						if dbErr != nil {
 							l(LogCrit, jailName, "Error with the database query while updating the hash of the first line. Returning.\n  Error:", dbErr.Error())
 							return
@@ -278,7 +286,7 @@ func main() {
 					//TODO: Check for error
 					l(LogDebug, jailName, "Getting the last scanned line from the database.")
 
-					dbErr = db.QueryRow("SELECT LastScannedLine FROM Jails WHERE Name=? LIMIT 1", jailName).Scan(&oldLinesCounter)
+					dbErr = db.QueryRow("SELECT LastScannedLine FROM Jails WHERE ID=? LIMIT 1", jailID).Scan(&oldLinesCounter)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Error with the database query for getting the lines scanned in the previous instance.\n  Error:", dbErr.Error())
@@ -330,7 +338,7 @@ func main() {
 								if err != nil {
 									l(LogCrit, jailName, "Cannot parse the timestamp of the line ", lineNumber, "\n  Error:"+err.Error())
 									//increments number of lines in the DB
-									db.Exec("UPDATE Jails SET LastScannedLine=? WHERE Name=?", lineNumber, jailName)
+									db.Exec("UPDATE Jails SET LastScannedLine=? WHERE ID=?", lineNumber, jailID)
 									continue
 									//panic("Cannot parse the timestamp of the line")
 								} else {
@@ -347,11 +355,11 @@ func main() {
 						l(LogCrit, jailName, "Couldn't been able to fetch the IP from the log on the line", lineNumber)
 						//panic("Couldn't been able to fetch the IP or the timestamp")
 						//Ignore but increment the line number in the database
-						db.Exec("UPDATE Jails SET LastScannedLine=? WHERE Name=?", lineNumber, jailName)
+						db.Exec("UPDATE Jails SET LastScannedLine=? WHERE ID=?", lineNumber, jailID)
 						continue
 					} else if timestamp.Unix() == 0 {
 						l(LogCrit, jailName, "Couldn't been able to fetch the timestamp from the log on the line", lineNumber)
-						db.Exec("UPDATE Jails SET LastScannedLine=? WHERE Name=?", lineNumber, jailName)
+						db.Exec("UPDATE Jails SET LastScannedLine=? WHERE ID=?", lineNumber, jailID)
 						//panic("Couldn't been able to fetch the IP or the timestamp")
 						continue
 					}
@@ -359,7 +367,7 @@ func main() {
 					//Makes sure the IP exists in the database
 					//TODO: Check for error
 					l(LogDebug, jailName, "Making sure the IP is in the database.")
-					_, dbErr := db.Exec("INSERT OR IGNORE INTO IPsCounter(Jail, IP, Counter) VALUES (?,?,0)", jailName, IP)
+					_, dbErr := db.Exec("INSERT OR IGNORE INTO IPsCounter(Jail, IP, Counter) VALUES (?,?,0)", jailID, IP)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Cannot make sure the IP is in the database.\n  Error:", dbErr.Error())
@@ -370,7 +378,7 @@ func main() {
 					//TODO: Check for error
 
 					l(LogDebug, jailName, "Getting the number of requests made from the IP.")
-					dbErr = db.QueryRow("SELECT Counter FROM IPsCounter WHERE Jail=? AND IP=?", jailName, IP).Scan(&counterValue)
+					dbErr = db.QueryRow("SELECT Counter FROM IPsCounter WHERE Jail=? AND IP=?", jailID, IP).Scan(&counterValue)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Error with the database query. Returning.\n  Error:", dbErr.Error())
@@ -381,7 +389,7 @@ func main() {
 					//Update the value in the database
 
 					l(LogDebug, jailName, "Updating the request number of the IP.")
-					_, dbErr = db.Exec("UPDATE IPsCounter SET Counter=? WHERE Jail=? AND IP=?", counter, jailName, IP)
+					_, dbErr = db.Exec("UPDATE IPsCounter SET Counter=? WHERE Jail=? AND IP=?", counter, jailID, IP)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Error with the database query.\n  Error:", dbErr.Error())
@@ -402,17 +410,17 @@ func main() {
 						//  The request number is obtaned by doung the module from the counter (eg. 6021) and the number of the ring elements (eg. 5000), then checking the result (1021)
 						//TODO: Check for error
 
-						dbErr = db.QueryRow("SELECT Timestamp, Burst FROM Logs WHERE IP=? AND Jail=? AND RequestNumber=?", IP, jailName, counter%uint64(localJail.CounterMaxValue)).Scan(&tmpTimestamp, &burst)
+						dbErr = db.QueryRow("SELECT Timestamp, Burst FROM Logs WHERE IP=? AND Jail=? AND RequestNumber=?", IP, jailID, counter%uint64(localJail.CounterMaxValue)).Scan(&tmpTimestamp, &burst)
 
 						if dbErr != nil {
 							l(LogCrit, jailName, "Error while selecting the timestamp from the logs. Line number: ", lineNumber, ". Trying to fix this...\n  Error:", dbErr.Error())
 
 							//Trying to fix the issue manually...
 							db.Exec("INSERT INTO Logs(Jail, IP, RequestNumber, Timestamp, Burst) VALUES (?,?,?,?,?) "+
-								"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailName, IP, counter%uint64(localJail.CounterMaxValue), timestamp.Unix(), burst)
+								"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailID, IP, counter%uint64(localJail.CounterMaxValue), timestamp.Unix(), burst)
 
 							//Increment the line number
-							db.Exec("UPDATE Jails SET LastScannedLine=? WHERE Name=?", lineNumber, jailName)
+							db.Exec("UPDATE Jails SET LastScannedLine=? WHERE ID=?", lineNumber, jailID)
 							continue
 
 							//return
@@ -436,7 +444,7 @@ func main() {
 								l(LogWarn, jailName, "The IP ", IP, " made some request and gone above the treshold, burst-catched.")
 							} else {
 
-								err := db.QueryRow("SELECT 1 FROM Bans WHERE IP=? AND Jail=?", IP, jailName).Scan()
+								err := db.QueryRow("SELECT 1 FROM Bans WHERE IP=? AND Jail=?", IP, jailID).Scan()
 								if err != sql.ErrNoRows {
 									l(LogWarn, jailName, "The IP ", IP, " should be banned but is already banned. Ignoring...")
 								} else {
@@ -444,7 +452,7 @@ func main() {
 									//IP da bannare
 									l(LogWarn, jailName, "The IP ", IP, " made too many requests, banning...")
 
-									_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailName, IP)
+									_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
 
 									argstr := []string{"-c", strings.Replace(strings.Replace(localJail.BanAction, "<"+localJail.IPGroupName+">", IP, -1), "<"+localJail.TsGroupName+">", timestamp.String(), -1)}
 									out, err := exec.Command("/bin/bash", argstr...).Output()
@@ -465,7 +473,7 @@ func main() {
 					}
 
 					_, dbErr = db.Exec("INSERT INTO Logs(Jail, IP, RequestNumber, Timestamp, Burst) VALUES (?,?,?,?,?) "+
-						"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailName, IP, counter%uint64(localJail.CounterMaxValue), timestamp.Unix(), burst)
+						"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailID, IP, counter%uint64(localJail.CounterMaxValue), timestamp.Unix(), burst)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Error with the database query.\n  Error:", dbErr.Error())
@@ -476,7 +484,7 @@ func main() {
 
 					//Update the last line read in the log file in the database
 
-					_, dbErr = db.Exec("UPDATE Jails SET LastScannedLine=? WHERE Name=?", lineNumber, jailName)
+					_, dbErr = db.Exec("UPDATE Jails SET LastScannedLine=? WHERE ID=?", lineNumber, jailID)
 
 					if dbErr != nil {
 						l(LogCrit, jailName, "Error with the database query.\n  Error:", dbErr.Error())
