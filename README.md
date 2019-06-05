@@ -37,6 +37,5 @@ CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 - [x] Change toml schema to allow jail not to be defined under jails but with [[jailname]]
 - [ ] When log gets rotated, the line number should be resetted
 - [x] Reference in the database the jails with the id instead of with the name
-- [ ] Add whitelist
-- [ ] Add ignore regex
-- [ ] Abb blackist (eg. banned user agents)
+- [x] Add whitelist
+- [x] Abb blackist (eg. banned user agents)

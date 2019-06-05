@@ -9,7 +9,7 @@ import (
 	"granti/config"
 	"io"
 	"io/ioutil"
-	"log"
+	"net"
 	"os"
 	"os/exec"
 	"regexp"
@@ -20,6 +20,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/hpcloud/tail"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/yl2chen/cidranger"
 )
 
 const (
@@ -171,6 +172,7 @@ func main() {
 		//Iterates all the jails in the configuration file
 		go func(jail config.JailInfo, conf config.Config, db *sql.DB) {
 			l(LogDebug, jail.Name, "The routine was created successfully.")
+
 			//get the local jail
 			if !jail.Enabled {
 				l(LogDebug, jail.Name, "The jail is not enabled. Shutting down the routine")
@@ -182,6 +184,18 @@ func main() {
 			if err != nil {
 				l(LogCrit, jail.Name, "Cannot parse the FindTime of the jail. Please, check for typos.")
 				return
+			}
+
+			whitelistedIPs := cidranger.NewPCTrieRanger()
+			for _, ip := range jail.IPWhitelist {
+				//COnvert IP to CIDR /32
+				if ip[len(ip)-2] != '/' && ip[len(ip)-3] != '/' {
+					ip += "/32"
+				}
+				//Parse the CIDR
+				_, net, _ := net.ParseCIDR(ip)
+				//Add the CIDR to the whitelisted enteries
+				whitelistedIPs.Insert(cidranger.NewBasicRangerEntry(*net))
 			}
 
 			var jailID int64
@@ -368,6 +382,28 @@ func main() {
 						continue
 					}
 
+					//needBan tells if the current IP needs to be banned instantly
+					needBan := false
+
+					//blacklistBan tells if the ban was caused from a blacklist ban
+					blacklistBan := false
+
+					//Checks if the IP is in the whitelist
+					whitelistedIP, err := whitelistedIPs.Contains(net.ParseIP(IP))
+					if err != nil {
+						l(LogWarn, jail.Name, "The IP in the line", lineNumber, "cannot be parsed to check the whitelisting...")
+					}
+
+					//Checks for blacklist
+					if !whitelistedIP {
+						for _, regex := range jail.RegexBlacklist {
+							if regexp.MustCompile(regex).Match([]byte(line.Text)) {
+								needBan, blacklistBan = true, true
+								break
+							}
+						}
+					}
+
 					//Makes sure the IP exists in the database
 					//TODO: Check for error
 					l(LogDebug, jail.Name, "Making sure the IP is in the database.")
@@ -377,6 +413,7 @@ func main() {
 						l(LogCrit, jail.Name, "Cannot make sure the IP is in the database.\n  Error:", dbErr.Error())
 					}
 
+					//counterValue is the value of the requests made from the same IP
 					var counterValue sql.NullInt64
 					//Get the value of the counter in the database
 					//TODO: Check for error
@@ -405,7 +442,7 @@ func main() {
 					//burst is the value of the burst itself - eg 10 means that 10 requests above the limit was made without banning the user
 					var burst uint
 					//If the IP has made more than N requests, the "ring" closes up and we need to start checking the requests
-					if counter > uint64(jail.CounterMaxValue) {
+					if !whitelistedIP && !needBan && counter > uint64(jail.CounterMaxValue) {
 						//This timestamp is the one present in the database
 						var timestampToBeOverwritten time.Time
 						//The tmp var is the raw value from the database that needs to be parsed
@@ -452,41 +489,55 @@ func main() {
 								if err != sql.ErrNoRows {
 									l(LogWarn, jail.Name, "The IP ", IP, " should be banned but is already banned. Ignoring...")
 								} else {
-
 									//IP da bannare
-									l(LogWarn, jail.Name, "The IP ", IP, " made too many requests, banning...")
-
-									_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
-
-									argstr := []string{"-c", strings.Replace(
-										strings.Replace(
-											strings.Replace(
-												jail.BanAction, "<"+jail.IPGroupName+">", IP, -1),
-											"<"+jail.TsGroupName+">", timestamp.String(), -1),
-										"<line>", line.Text, -1)}
-									out, err := exec.Command("/bin/bash", argstr...).Output()
-									if err != nil {
-										//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
-										log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
-										//panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
-
-									}
+									needBan = true
 								}
 							}
 						}
 					}
-					if enteredBurst {
-						burst++
+
+					//The IP Address needs to be banned
+					if !whitelistedIP && needBan {
+						l(LogWarn, jail.Name, "The IP ", IP, " made too many requests, banning...")
+
+						_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
+
+						banCommand := jail.BanAction
+						if blacklistBan {
+							banCommand = jail.BlacklistBanCommand
+						}
+
+						//Replace values in the command
+						banCommand = strings.Replace(
+							strings.Replace(
+								strings.Replace(
+									banCommand, "<"+jail.IPGroupName+">", IP, -1),
+								"<"+jail.TsGroupName+">", timestamp.String(), -1),
+							"<line>", line.Text, -1)
+
+						argstr := []string{"-c", banCommand}
+						out, err := exec.Command("/bin/bash", argstr...).Output()
+						if err != nil {
+							//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
+							//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
+							//panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
+							l(LogErr, jail.Name, "Cannot process ban for the IP ", IP, "; An error occourred while executing the bancommand.\n Ban command:\n",
+								banCommand, "\n\nSTDOUT:\n", string(out), "\n\nError:\n", err.Error())
+						}
 					} else {
-						burst = 0
+						if enteredBurst {
+							burst++
+						} else {
+							burst = 0
+						}
+						_, dbErr = db.Exec("INSERT INTO Logs(Jail, IP, RequestNumber, Timestamp, Burst) VALUES (?,?,?,?,?) "+
+							"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailID, IP, counter%uint64(jail.CounterMaxValue), timestamp.Unix(), burst)
+
+						if dbErr != nil {
+							l(LogCrit, jail.Name, "Error with the database query.\n  Error:", dbErr.Error())
+						}
 					}
 
-					_, dbErr = db.Exec("INSERT INTO Logs(Jail, IP, RequestNumber, Timestamp, Burst) VALUES (?,?,?,?,?) "+
-						"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailID, IP, counter%uint64(jail.CounterMaxValue), timestamp.Unix(), burst)
-
-					if dbErr != nil {
-						l(LogCrit, jail.Name, "Error with the database query.\n  Error:", dbErr.Error())
-					}
 					/*
 						db.Exec("INSERT INTO IPsCounter(Jail, IP, Counter) VALUES (?,?,0) " +
 						"ON CONFLICT(Jail, IP) DO UPDATE SET Counter = Excluded.MessageCount", lineNumber, jail.Name)*/
