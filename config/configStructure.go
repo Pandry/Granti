@@ -6,12 +6,13 @@ type Config struct {
 	DatabasePath    string
 	LogExistTimeout string
 
-	Jails map[string]JailInfo
+	Jails []JailInfo
 }
 
 //JailInfo is the abstraction of a single jail
 type JailInfo struct {
 	Enabled         bool
+	Name            string
 	Regex           string
 	IPGroupName     string
 	TsGroupName     string
