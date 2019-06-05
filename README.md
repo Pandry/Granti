@@ -34,7 +34,7 @@ CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 - [ ] Check for given inputs (eg. makes sure that the numbers are not negative)
 - [ ] Create a log file per each jail
 - [ ] Create a systemd installer and integration
-- [ ] Change toml schema to allow jail not to be defined under jails but with [[jailname]]
+- [x] Change toml schema to allow jail not to be defined under jails but with [[jailname]]
 - [ ] When log gets rotated, the line number should be resetted
 - [x] Reference in the database the jails with the id instead of with the name
 - [ ] Add whitelist
