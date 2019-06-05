@@ -23,10 +23,17 @@ import (
 )
 
 const (
+	//LogDebug is the log value for debugging pourpouses
+	//	it is shown only on very verbose flags
 	LogDebug = iota
+	//LogInfo is the log value for info pourpouses
+	//	it is shown only on verbose and very verbose output
 	LogInfo
+	//LogWarn rapresents a warning, but is something the program can handle
 	LogWarn
+	//LogErr is an error, and is used when an exception is thown and a jail routine returns and/or needs to be restarted
 	LogErr
+	//LogCrit rapresent a critical issue the jail cannot overcome and the program can do nothing about
 	LogCrit
 )
 
