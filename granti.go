@@ -454,7 +454,12 @@ func main() {
 
 									_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
 
-									argstr := []string{"-c", strings.Replace(strings.Replace(jail.BanAction, "<"+jail.IPGroupName+">", IP, -1), "<"+jail.TsGroupName+">", timestamp.String(), -1)}
+									argstr := []string{"-c", strings.Replace(
+										strings.Replace(
+											strings.Replace(
+												jail.BanAction, "<"+jail.IPGroupName+">", IP, -1),
+											"<"+jail.TsGroupName+">", timestamp.String(), -1),
+										"<line>", line.Text, -1)}
 									out, err := exec.Command("/bin/bash", argstr...).Output()
 									if err != nil {
 										//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
