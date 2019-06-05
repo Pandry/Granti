@@ -272,7 +272,7 @@ func main() {
 						//If the old file is different, update the hash and set the boolean flag
 						//TODO: Check for error
 						l(LogDebug, jailName, "The new log file is different from the previous one. Updating the hash in DB")
-						_, dbErr = db.Exec("UPDATE Jails SET FirstLineHash=?, LastScannedLine=0 WHERE ID=?", hash, JailID)
+						_, dbErr = db.Exec("UPDATE Jails SET FirstLineHash=?, LastScannedLine=0 WHERE ID=?", hash, jailID)
 						if dbErr != nil {
 							l(LogCrit, jailName, "Error with the database query while updating the hash of the first line. Returning.\n  Error:", dbErr.Error())
 							return
