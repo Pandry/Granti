@@ -163,19 +163,9 @@ func main() {
 	l(LogDebug, "", "The jails was insterted in the database.")
 	//TODO: Need to delete old ones
 
-	l(LogDebug, "", "Creating map for maps durations.")
-	jailDurations := make(map[string]time.Duration)
-
 	//For each jail, create a new goroutine
 	l(LogDebug, "", "Creating a routine for each jail...")
 	for _, jail := range conf.Jails {
-
-		//Fill the jailDurations hashmap with the duration for each jail
-		jailDurations[jail.Name], err = time.ParseDuration(jail.FindTime)
-		if err != nil {
-			l(LogCrit, jail.Name, "Cannot parse the FindTime of the jail. Please, check for typos.")
-			continue
-		}
 
 		l(LogDebug, jail.Name, "Creating a routine the jail...")
 		//Iterates all the jails in the configuration file
@@ -184,6 +174,13 @@ func main() {
 			//get the local jail
 			if !jail.Enabled {
 				l(LogDebug, jail.Name, "The jail is not enabled. Shutting down the routine")
+				return
+			}
+
+			l(LogDebug, jail.Name, "Parsing jail treshold duration.")
+			jailDuration, err := time.ParseDuration(jail.FindTime)
+			if err != nil {
+				l(LogCrit, jail.Name, "Cannot parse the FindTime of the jail. Please, check for typos.")
 				return
 			}
 
@@ -445,7 +442,7 @@ func main() {
 
 						//Then we calculate the delta value between the old timestamp and the currest request we are elaborating.
 						//  If the delta is less then the find time, we came in the old ring status in a timeframe too short
-						if timestamp.Sub(timestampToBeOverwritten).Seconds() < jailDurations[jail.Name].Seconds() {
+						if timestamp.Sub(timestampToBeOverwritten).Seconds() < jailDuration.Seconds() {
 							if burst < jail.Burst {
 								enteredBurst = true
 								l(LogWarn, jail.Name, "The IP ", IP, " made some request and gone above the treshold, burst-catched.")
