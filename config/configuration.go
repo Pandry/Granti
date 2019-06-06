@@ -11,7 +11,7 @@ LogExistTimeout = "1s"
 [[jail]]
 Name = "myjail"
 Enabled = true
-Regex = "^(?P<IP>(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)) (?P<timestamp>\d{10}) .*$"
+Regex = "^(?P<IP>(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)) (?P<timestamp>\\d{10}) .*$"
 RegexBlacklist = ["curl","zmap"]
 BlacklistBanCommand = "/home/user/banBotIP.sh <IP>"
 IPWhitelist = ["127.0.0.1/8", "10.0.0.0/8", "172.16.0.0/16", "192.168.0.0/16"]
