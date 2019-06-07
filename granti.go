@@ -176,7 +176,7 @@ func main() {
 	l(LogDebug, "", "The database was seeded correctly and is now ready.")
 
 	l(LogDebug, "", "Checking the jails in the configuration file.")
-	for _, jail := range conf.Jails {
+	for _, jail := range conf.Jail {
 		l(LogDebug, jail.Name, "making sure the jail exists in the database.")
 		_, err = db.Exec("INSERT OR IGNORE INTO Jails (Name) VALUES (?)", jail.Name)
 		if err != nil {
@@ -189,7 +189,7 @@ func main() {
 	//For each jail, create a new goroutine
 	l(LogInfo, "", "All checks done. Starting Granti...")
 	l(LogDebug, "", "Creating a routine for each jail...")
-	for _, jail := range conf.Jails {
+	for _, jail := range conf.Jail {
 
 		l(LogDebug, jail.Name, "Creating a routine the jail...")
 		//Iterates all the jails in the configuration file
