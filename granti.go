@@ -424,6 +424,7 @@ func main() {
 						for _, regex := range jail.RegexBlacklist {
 							if regexp.MustCompile(regex).Match([]byte(line.Text)) {
 								needBan, blacklistBan = true, true
+								l(LogDebug, jail.Name, "The IP ", IP, " matched for a blacklist regex; Banning...")
 								break
 							}
 						}
