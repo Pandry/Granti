@@ -6,7 +6,7 @@ type Config struct {
 	DatabasePath    string
 	LogExistTimeout string
 
-	Jails []JailInfo
+	Jail []JailInfo
 }
 
 //JailInfo is the abstraction of a single jail
