@@ -415,6 +415,8 @@ func main() {
 					whitelistedIP, err := whitelistedIPs.Contains(net.ParseIP(IP))
 					if err != nil {
 						l(LogWarn, jail.Name, "The IP in the line", lineNumber, "cannot be parsed to check the whitelisting...")
+					} else if whitelistedIP {
+						l(LogDebug, jail.Name, "The IP ", IP, " is whitelisted; Skipping checks")
 					}
 
 					//Checks for blacklist
