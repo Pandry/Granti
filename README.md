@@ -26,9 +26,9 @@ UML (Needs to be translated to English):
 
 
 ## Compilation
-Set CGO_ENABLED=1 for sqlite  
+Set `CGO_ENABLED=1` for sqlite  
 Command to compile statically and export to a VM:  
-CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .  
+`CGO_ENABLED=1 GOOS=linux go build -a -ldflags '-extldflags "-static"' .`
 
 ## TODO
 - [ ] Check for given inputs (eg. makes sure that the numbers are not negative)
