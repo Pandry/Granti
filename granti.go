@@ -534,12 +534,20 @@ func main() {
 						}
 
 						//Replace values in the command
+						for _, match := range re.FindAllStringSubmatch(line.Text, 1) {
+							//For each group
+							for groupIdx, group := range match {
+								//Get the group name of the match
+								name := groupNames[groupIdx]
+								//IF the group name is the IP field, assign it to the IP filed
+								if name != "" {
+									banCommand = strings.Replace(
+										banCommand, "<"+name+">", group, -1)
+								}
+							}
+						}
 						banCommand = strings.Replace(
-							strings.Replace(
-								strings.Replace(
-									banCommand, "<"+jail.IPGroupName+">", IP, -1),
-								"<"+jail.TsGroupName+">", timestamp.String(), -1),
-							"<line>", line.Text, -1)
+							banCommand, "<line>", line.Text, -1)
 
 						argstr := []string{"-c", banCommand}
 						out, err := exec.Command("/bin/bash", argstr...).Output()
