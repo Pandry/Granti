@@ -361,7 +361,7 @@ func main() {
 					groupNames := re.SubexpNames()
 					//For each match in the log (eg. ip, timestamp)
 					l(LogDebug, jail.Name, "Parsing the regex of the string")
-					for _, match := range re.FindAllStringSubmatch(line.Text, 1) {
+					for _, match := range re.FindAllStringSubmatch(line.Text, -1) {
 						//For each group
 						for groupIdx, group := range match {
 							//Get the group name of the match
@@ -526,15 +526,13 @@ func main() {
 					if !whitelistedIP && needBan {
 						l(LogWarn, jail.Name, "The IP ", IP, " made too many requests, banning...")
 
-						_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
-
 						banCommand := jail.BanAction
 						if blacklistBan {
 							banCommand = jail.BlacklistBanCommand
 						}
 
 						//Replace values in the command
-						for _, match := range re.FindAllStringSubmatch(line.Text, 1) {
+						for _, match := range re.FindAllStringSubmatch(line.Text, -1) {
 							//For each group
 							for groupIdx, group := range match {
 								//Get the group name of the match
@@ -549,14 +547,16 @@ func main() {
 						banCommand = strings.Replace(
 							banCommand, "<line>", line.Text, -1)
 
-						argstr := []string{"-c", banCommand}
-						out, err := exec.Command("/bin/bash", argstr...).Output()
+						out, err := exec.Command("/bin/bash", "-c", banCommand).Output()
 						if err != nil {
 							//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
 							//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
 							//panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
 							l(LogErr, jail.Name, "Cannot process ban for the IP ", IP, "; An error occourred while executing the bancommand.\n Ban command:\n",
 								banCommand, "\n\nSTDOUT:\n", string(out), "\n\nError:\n", err.Error())
+						} else {
+							//Adding the ban to the database if the ban was successful
+							_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
 						}
 					} else {
 						if enteredBurst {
