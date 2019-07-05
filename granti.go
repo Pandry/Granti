@@ -203,7 +203,7 @@ func main() {
 			}
 
 			l(LogDebug, jail.Name, "Parsing jail treshold duration.")
-			jailDuration, err := time.ParseDuration(jail.FindTime)
+			jailFindTime, err := time.ParseDuration(jail.FindTime)
 			if err != nil {
 				l(LogCrit, jail.Name, "Cannot parse the FindTime of the jail. Please, check for typos.")
 				return
@@ -505,26 +505,29 @@ func main() {
 
 						//Then we calculate the delta value between the old timestamp and the currest request we are elaborating.
 						//  If the delta is less then the find time, we came in the old ring status in a timeframe too short
-						if timestamp.Sub(timestampToBeOverwritten).Seconds() < jailDuration.Seconds() {
-							if burst < jail.Burst {
+						if timestamp.Sub(timestampToBeOverwritten).Seconds() < jailFindTime.Seconds() {
+							if burst > jail.Burst-1 {
+								needBan = true
+							} else {
 								enteredBurst = true
 								l(LogWarn, jail.Name, "The IP ", IP, " made some request and gone above the treshold, burst-catched.")
-							} else {
-
-								err := db.QueryRow("SELECT 1 FROM Bans WHERE IP=? AND Jail=?", IP, jailID).Scan()
-								if err != sql.ErrNoRows {
-									l(LogWarn, jail.Name, "The IP ", IP, " should be banned but is already banned. Ignoring...")
-								} else {
-									//IP da bannare
-									needBan = true
-								}
 							}
 						}
 					}
 
+					alreadyBanned := false
+					if needBan {
+						err = db.QueryRow("SELECT 1 FROM Bans WHERE IP=? AND Jail=?", IP, jailID).Scan()
+						if err != sql.ErrNoRows {
+							l(LogWarn, jail.Name, "The IP ", IP, " should be banned but is already banned. Ignoring...")
+							alreadyBanned = true
+						}
+					}
+
 					//The IP Address needs to be banned
-					if !whitelistedIP && needBan {
-						l(LogWarn, jail.Name, "The IP ", IP, " made too many requests, banning...")
+					if !whitelistedIP && needBan && !alreadyBanned {
+
+						l(LogWarn, jail.Name, "The IP ", IP, " needs to be banned, banning...")
 
 						banCommand := jail.BanAction
 						if blacklistBan {
