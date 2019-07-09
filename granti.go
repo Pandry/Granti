@@ -503,12 +503,21 @@ func main() {
 								panic("Cannot parse the FindTime duration in the configuration file")
 							}*/
 
+						deltaTimestamp := timestamp.Sub(timestampToBeOverwritten).Seconds()
+
+						if deltaTimestamp < 0 {
+							l(LogCrit, jail.Name, "An error occourred with the log. The delta timestamp is negative: the new log line is from a previous moment. ")
+
+							continue
+						}
+
 						//Then we calculate the delta value between the old timestamp and the currest request we are elaborating.
 						//  If the delta is less then the find time, we came in the old ring status in a timeframe too short
-						if timestamp.Sub(timestampToBeOverwritten).Seconds() < jailFindTime.Seconds() {
-							if burst > jail.Burst-1 {
-								needBan = true
-							} else {
+						if deltaTimestamp < jailFindTime.Seconds() {
+							//The IP should be banned...
+							l(LogDebug, jail.Name, "The IP made enough requests to start seeing if it can be banned (The jail has a ", jail.Burst, " burst value).")
+							//Reporting the burst
+							if burst > 0 {
 								enteredBurst = true
 								l(LogWarn, jail.Name, "The IP ", IP, " made some request and gone above the treshold, burst-catched.")
 							}
