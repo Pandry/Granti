@@ -577,7 +577,7 @@ func main() {
 							_, dbErr = db.Exec("INSERT INTO Bans(Jail, IP) VALUES (?,?)", jailID, IP)
 						}
 					} else {
-						if enteredBurst {
+						if !whitelistedIP && enteredBurst {
 							burst++
 						} else {
 							burst = 0
