@@ -455,7 +455,7 @@ func main() {
 					counter := uint64(counterValue.Int64) + 1
 					//Update the value in the database
 
-					l(LogDebug, jail.Name, "Updating the request number of the IP.")
+					l(LogDebug, jail.Name, "Updating the request number of the IP (", counter, ").")
 					_, dbErr = db.Exec("UPDATE IPsCounter SET Counter=? WHERE Jail=? AND IP=?", counter, jailID, IP)
 
 					if dbErr != nil {
@@ -469,6 +469,7 @@ func main() {
 					var burst uint
 					//If the IP has made more than N requests, the "ring" closes up and we need to start checking the requests
 					if !whitelistedIP && !needBan && counter > uint64(jail.CounterMaxValue) {
+						l(LogDebug, jail.Name, "The IP made enough requests to start checking for lurking (The IP made ", counter, " requests)..")
 						//This timestamp is the one present in the database
 						var timestampToBeOverwritten time.Time
 						//The tmp var is the raw value from the database that needs to be parsed
