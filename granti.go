@@ -583,7 +583,7 @@ func main() {
 							burst = 0
 						}
 						_, dbErr = db.Exec("INSERT INTO Logs(Jail, IP, RequestNumber, Timestamp, Burst) VALUES (?,?,?,?,?) "+
-							"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Burst = Excluded.Burst", jailID, IP, counter%uint64(jail.CounterMaxValue), timestamp.Unix(), burst)
+							"ON CONFLICT(Jail, IP, RequestNumber) DO UPDATE SET RequestNumber = Excluded.RequestNumber, Timestamp = Excluded.Timestamp, Burst = Excluded.Burst", jailID, IP, counter%uint64(jail.CounterMaxValue), timestamp.Unix(), burst)
 
 						if dbErr != nil {
 							l(LogCrit, jail.Name, "Error with the database query.\n  Error:", dbErr.Error())
