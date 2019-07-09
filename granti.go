@@ -521,6 +521,12 @@ func main() {
 								enteredBurst = true
 								l(LogWarn, jail.Name, "The IP ", IP, " made some request and gone above the treshold, burst-catched.")
 							}
+
+							//If the burst is 0 or the burst exceed the jail setting
+							if jail.Burst == 0 || burst > jail.Burst {
+								l(LogDebug, jail.Name, "The IP needs to be banned.")
+								needBan = true
+							}
 						}
 					}
 
