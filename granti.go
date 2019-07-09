@@ -472,12 +472,12 @@ func main() {
 						//This timestamp is the one present in the database
 						var timestampToBeOverwritten time.Time
 						//The tmp var is the raw value from the database that needs to be parsed
-						var tmpTimestamp sql.NullInt64
+						var tmpNewTimestamp sql.NullInt64
 						//We get the log from the database
 						//  The request number is obtaned by doung the module from the counter (eg. 6021) and the number of the ring elements (eg. 5000), then checking the result (1021)
 						//TODO: Check for error
 
-						dbErr = db.QueryRow("SELECT Timestamp, Burst FROM Logs WHERE IP=? AND Jail=? AND RequestNumber=?", IP, jailID, counter%uint64(jail.CounterMaxValue)).Scan(&tmpTimestamp, &burst)
+						dbErr = db.QueryRow("SELECT Timestamp, Burst FROM Logs WHERE IP=? AND Jail=? AND RequestNumber=?", IP, jailID, counter%uint64(jail.CounterMaxValue)).Scan(&tmpNewTimestamp, &burst)
 
 						if dbErr != nil {
 							l(LogCrit, jail.Name, "Error while selecting the timestamp from the logs. Line number: ", lineNumber, ". Trying to fix this...\n  Error:", dbErr.Error())
@@ -492,8 +492,10 @@ func main() {
 
 							//return
 						}
+
 						//Then we parse the timestamp
-						timestampToBeOverwritten = time.Unix(tmpTimestamp.Int64, 0)
+						timestampToBeOverwritten = time.Unix(tmpNewTimestamp.Int64, 0)
+						l(LogDebug, jail.Name, "The timestamp has a value of", timestamp.Unix(), ", while the old one has the value of", tmpNewTimestamp.Int64, ", resulting in a delta of ", timestamp.Unix()-tmpNewTimestamp.Int64, ", which are ", timestamp.Sub(timestampToBeOverwritten).String())
 
 						//We parse the findtime string from the config
 						//TODO: this should not be done for every request, but only once - PERFORMANCE IMPACT
@@ -565,6 +567,7 @@ func main() {
 						banCommand = strings.Replace(
 							banCommand, "<line>", line.Text, -1)
 
+						//TODO: Need to add STDERR
 						out, err := exec.Command("/bin/bash", "-c", banCommand).Output()
 						if err != nil {
 							//log.Panic("Execution of the command failed.\n  STDOUT:\n" + string(out))
