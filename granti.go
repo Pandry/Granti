@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/hpcloud/tail"
+	"github.com/Pandry/tail"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/yl2chen/cidranger"
 )
@@ -301,7 +301,7 @@ func main() {
 					var oldHash sql.NullString
 					//TODO: Check for error
 
-					l(LogDebug, jail.Name, "Extracting the old hash of the first line fro mthe database")
+					l(LogDebug, jail.Name, "Extracting the old hash of the first line from the database")
 					dbErr := db.QueryRow("SELECT FirstLineHash FROM Jails WHERE ID=? LIMIT 1", jailID).Scan(&oldHash)
 
 					if dbErr != nil {
@@ -496,7 +496,7 @@ func main() {
 
 						//Then we parse the timestamp
 						timestampToBeOverwritten = time.Unix(tmpNewTimestamp.Int64, 0)
-						l(LogDebug, jail.Name, "The timestamp has a value of", timestamp.Unix(), ", while the old one has the value of", tmpNewTimestamp.Int64, ", resulting in a delta of ", timestamp.Unix()-tmpNewTimestamp.Int64, ", which are ", timestamp.Sub(timestampToBeOverwritten).String())
+						l(LogDebug, jail.Name, "The timestamp has a value of", timestamp.Unix(), ", while the old one has the value of", tmpNewTimestamp.Int64, ", resulting in a ∆ of ", timestamp.Unix()-tmpNewTimestamp.Int64, ", which are ", timestamp.Sub(timestampToBeOverwritten).String())
 
 						//We parse the findtime string from the config
 						//TODO: this should not be done for every request, but only once - PERFORMANCE IMPACT
@@ -509,7 +509,37 @@ func main() {
 						deltaTimestamp := timestamp.Sub(timestampToBeOverwritten).Seconds()
 
 						if deltaTimestamp < 0 {
-							l(LogCrit, jail.Name, "An error occourred with the log. The delta timestamp is negative: the new log line is from a previous moment. ")
+							l(LogCrit, jail.Name, "An error occourred with the log. The ∆timestamp is negative: the new log line is from a previous moment. Checking if reading again the same file...")
+							//Hashes the line to check if it's reading the same hash again
+							hash := SHAHash(line.Text)
+
+							var oldHash sql.NullString
+
+							l(LogDebug, jail.Name, "Extracting the old hash of the first line from the database for ∆timestamp")
+							dbErr := db.QueryRow("SELECT FirstLineHash FROM Jails WHERE ID=? LIMIT 1", jailID).Scan(&oldHash)
+
+							if dbErr != nil {
+								l(LogCrit, jail.Name, "Error with the database query while reading the old hash in negative ∆timestamp condition. Returning.\n  Error:", dbErr.Error())
+							}
+
+							//If it's equal, it means it's reading the same file again
+							if hash == oldHash.String {
+								l(LogCrit, jail.Name, "File anew read detected! DELETING ALL LOGS!")
+								//Now, we don't know what happened:
+								//  1. The tail library started reading the file anew (bug in the library? Can a poll-logic fix the issue?)
+								//      - Taken personally charge of the library
+								//  2. The rsyslog process actually written the same log (same path, instant, before in time the the prev. request and as the first line, unprobable )
+								//  3.
+
+								//Technically, setting the line number to 0 (which will be incremented to 1 in the next iteration, will force the file to be checked anew
+								//    and will make the program skip the lines read until now...)
+								db.Exec("DELETE FROM Logs WHERE Jail=?", jailID)
+								lineNumber = 0
+
+							}
+
+							//Increment the line number
+							db.Exec("UPDATE Jails SET LastScannedLine=? WHERE ID=?", lineNumber, jailID)
 
 							continue
 						}
